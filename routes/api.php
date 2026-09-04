@@ -7,6 +7,7 @@ use App\Http\Controllers\DisclaimerController;
 use App\Http\Controllers\CreditsController;
 use App\Http\Controllers\SignupOtpController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\PaymentController;
 
  Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password',[AuthController::class,'forgotpassword']);
@@ -36,3 +37,4 @@ Route::get('/test-env', function() {
         'token_exists' => !empty(env('WHATSAPP_ACCESS_TOKEN')),
     ]);
 });
+

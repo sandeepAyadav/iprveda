@@ -40,4 +40,9 @@ return [
     'system_user_token'=> env('WHATSAPP_SYSTEM_USER_TOKEN'),
     'otp_template_name'=> env('WHATSAPP_OTP_TEMPLATE_NAME', 'otp_verification'),
 ],
+
+   'razorpay' => [
+       'key' => env('RAZORPAY_KEY'),
+       'secret' => env('RAZORPAY_SECRET'),
+   ],
 ];

@@ -1,8 +1,29 @@
 import { Head, useForm } from '@inertiajs/react';
 import { useState } from 'react';
+import axios from 'axios';
+
+const ONBOARDING_AMOUNT = 499; 
+
+const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+        if (document.getElementById('razorpay-script')) {
+            resolve(true);
+            return;
+        }
+        const script = document.createElement('script');
+        script.id = 'razorpay-script';
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+    });
+};
 
 export default function Onboarding() {
     const [step, setStep] = useState(0);
+    const [paying, setPaying] = useState(false);
+    const [paymentError, setPaymentError] = useState('');
+    const [paymentDone, setPaymentDone] = useState(false);
 
     const { data, setData, post, processing, errors } = useForm({
         company_name: '',
@@ -10,7 +31,7 @@ export default function Onboarding() {
         preference: '',
     });
 
-    const totalSteps = 3;
+    const totalSteps = 4;
 
     const next = () => setStep((s) => Math.min(s + 1, totalSteps));
     const back = () => setStep((s) => Math.max(s - 1, 0));
@@ -18,6 +39,73 @@ export default function Onboarding() {
     const handleSubmit = (e) => {
         e.preventDefault();
         post('/onboarding');
+    };
+
+    const handlePayAndContinue = async () => {
+        setPaymentError('');
+        setPaying(true);
+
+        const scriptLoaded = await loadRazorpayScript();
+        if (!scriptLoaded) {
+            setPaymentError('Razorpay not loaded.');
+            setPaying(false);
+            return;
+        }
+
+        try {
+            const { data: orderData } = await axios.post('/payment/create-order', {
+                amount: ONBOARDING_AMOUNT,
+            });
+
+            const options = {
+                key: orderData.key,
+                amount: orderData.amount,
+                currency: orderData.currency,
+                name: 'IPR Veda',
+                description: 'Onboarding Fee',
+                order_id: orderData.order_id,
+                handler: async function (response) {
+                    try {
+                        const verifyRes = await axios.post('/payment/verify', {
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_signature: response.razorpay_signature,
+                        });
+
+                        if (verifyRes.data.status === 'success') {
+                            setPaymentDone(true);
+                            setPaying(false);
+                            next();
+                        } else {
+                            setPaymentError('Payment not verify .');
+                            setPaying(false);
+                        }
+                    } catch (err) {
+                        setPaymentError('Verification fail.');
+                        setPaying(false);
+                    }
+                },
+                modal: {
+                    ondismiss: function () {
+                        setPaying(false);
+                    },
+                },
+                theme: {
+                    color: '#2563eb',
+                },
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.on('payment.failed', function (response) {
+                setPaymentError('Payment failed: ' + response.error.description);
+                setPaying(false);
+            });
+
+            rzp.open();
+        } catch (err) {
+            setPaymentError('Order create error.');
+            setPaying(false);
+        }
     };
 
     return (
@@ -112,16 +200,27 @@ export default function Onboarding() {
                             <p className="text-red-500 text-sm mt-2">{errors.business_type}</p>
                         )}
 
+                        {!paymentDone && (
+                            <div className="mt-6 border-t pt-4">
+                                <p className="text-sm text-gray-600 mb-3">
+                                    Onboarding fee: <span className="font-semibold">₹{ONBOARDING_AMOUNT}</span> — payment complete karne ke baad hi aage badh sakoge.
+                                </p>
+                                {paymentError && (
+                                    <p className="text-red-500 text-sm mb-3">{paymentError}</p>
+                                )}
+                            </div>
+                        )}
+
                         <div className="flex justify-between mt-6">
                             <button onClick={back} className="text-gray-500 hover:text-black">
                                 Back
                             </button>
                             <button
-                                onClick={next}
-                                disabled={!data.business_type}
-                                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition"
+                                onClick={handlePayAndContinue}
+                                disabled={!data.business_type || paying}
+                                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 transition"
                             >
-                                Next
+                                {paying ? 'Processing...' : `Pay ₹${ONBOARDING_AMOUNT} & Continue`}
                             </button>
                         </div>
                     </div>
