@@ -45,4 +45,7 @@ return [
        'key' => env('RAZORPAY_KEY'),
        'secret' => env('RAZORPAY_SECRET'),
    ],
+   'gemini'=>[
+    'key'=>env('GEMINI_API_KEY'),
+   ],
 ];
