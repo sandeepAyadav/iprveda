@@ -605,7 +605,7 @@ export default function ServiceHub() {
                 </div>
 
                 {/* Documents List */}
-                <div className="mb-2"> {/* Bottom margin thoda kam kar diya kyunki footer alag hai */}
+                <div className="mb-2"> 
                     <h3 className="text-sm font-semibold text-gray-900 mb-3">
                         Documents you'll need
                     </h3>
